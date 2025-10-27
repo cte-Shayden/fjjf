@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LÖVE.js Game Runner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-section:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .upload-section.dragover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: #fff;
+        }
+
+        .upload-section.hidden {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .game-container {
+            display: none;
+            margin-top: 20px;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .game-container.active {
+            display: block;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            background: #000;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.info {
+            background: rgba(52, 152, 219, 0.3);
+        }
+
+        .status.error {
+            background: rgba(231, 76, 60, 0.3);
+        }
+
+        .status.success {
+            background: rgba(46, 204, 113, 0.3);
+        }
+
+        .status.loading {
+            background: rgba(241, 196, 15, 0.3);
+        }
+
+        .controls {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .controls.active {
+            display: flex;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .info-box h3 {
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 LÖVE.js Game Runner</h1>
+        <p class="subtitle">Run LÖVE games like Frozen Heart in your browser!</p>
+
+        <div class="upload-section" id="dropZone">
+            <div class="upload-icon">📁</div>
+            <h2>Select your .love file or game folder</h2>
+            <p style="margin: 20px 0;">Drag & drop or click to browse</p>
+            <button class="btn" onclick="document.getElementById('loveFileInput').click()">Browse .love File</button>
+            <button class="btn" onclick="document.getElementById('folderInput').click()">Browse Folder</button>
+            <input type="file" id="loveFileInput" accept=".love">
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+        </div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+
+        <div id="status"></div>
+
+        <div class="controls" id="controls">
+            <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+            <button class="btn" onclick="restartGame()">🔄 Restart</button>
+            <button class="btn" onclick="stopGame()">⏹️ Stop</button>
+        </div>
+
+        <div class="game-container" id="gameContainer">
+            <div class="canvas-wrapper">
+                <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>ℹ️ How to Use:</h3>
+            <ul>
+                <li><strong>Select .love file:</strong> Choose a .love game file directly (supports embedded executables)</li>
+                <li><strong>Select game folder:</strong> Choose the entire game directory (must contain main.lua)</li>
+                <li><strong>Controls:</strong> Use keyboard/mouse as normal (arrow keys, WASD, etc.)</li>
+                <li><strong>Fullscreen:</strong> Click the fullscreen button for immersive gameplay</li>
+            </ul>
+        </div>
+
+        <div class="info-box">
+            <h3>⚠️ Important Notes:</h3>
+            <ul>
+                <li>This runs games using a LÖVE 11.4 JavaScript implementation</li>
+                <li>First load may take a moment while files are processed</li>
+                <li>Some LÖVE features may have browser limitations (file I/O, threads, etc.)</li>
+                <li>Best with games designed for LÖVE 11.x</li>
+                <li>Save data is stored in browser memory only</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const loveFileInput = document.getElementById('loveFileInput');
+        const folderInput = document.getElementById('folderInput');
+        const canvas = document.getElementById('canvas');
+        const gameContainer = document.getElementById('gameContainer');
+        const status = document.getElementById('status');
+        const controls = document.getElementById('controls');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+
+        let gameFiles = {};
+        let Module = null;
+
+        function showStatus(message, type = 'info') {
+            status.innerHTML = message;
+            status.className = `status ${type}`;
+        }
+
+        function updateProgress(percent, text) {
+            progressBar.classList.add('active');
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = text || (percent + '%');
+        }
+
+        function hideProgress() {
+            progressBar.classList.remove('active');
+        }
+
+        // Drag and drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].name.endsWith('.love')) {
+                await processLoveFile(files[0]);
+            } else {
+                const items = e.dataTransfer.items;
+                if (items && items[0]) {
+                    const entry = items[0].webkitGetAsEntry();
+                    if (entry && entry.isDirectory) {
+                        await processDirectory(entry);
+                    }
+                }
+            }
+        });
+
+        loveFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await processLoveFile(file);
+            }
+        });
+
+        folderInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                await processFiles(files);
+            }
+        });
+
+        async function processLoveFile(file) {
+            showStatus('📦 Extracting .love file...', 'loading');
+            updateProgress(10, 'Reading archive...');
+            
+            try {
+                let arrayBuffer = await file.arrayBuffer();
+                let zip = null;
+                
+                // Try loading as a normal ZIP first
+                try {
+                    zip = await JSZip.loadAsync(arrayBuffer);
+                } catch (e) {
+                    // If that fails, the game might be embedded in an executable
+                    // Search for ZIP signature (PK\x03\x04) from the end of the file
+                    showStatus('📦 Detecting embedded game data...', 'loading');
+                    updateProgress(20, 'Searching for game data...');
+                    
+                    const bytes = new Uint8Array(arrayBuffer);
+                    let zipStart = -1;
+                    
+                    // ZIP files start with "PK" (0x50 0x4B)
+                    // Search from the end backwards for efficiency
+                    for (let i = bytes.length - 22; i >= 0; i--) {
+                        if (bytes[i] === 0x50 && bytes[i + 1] === 0x4B && 
+                            bytes[i + 2] === 0x03 && bytes[i + 3] === 0x04) {
+                            zipStart = i;
+                            break;
+                        }
+                    }
+                    
+                    if (zipStart === -1) {
+                        throw new Error('No ZIP data found in file. This may not be a valid .love file.');
+                    }
+                    
+                    showStatus('📦 Found embedded game at offset ' + zipStart + '...', 'loading');
+                    updateProgress(30, 'Extracting embedded game...');
+                    
+                    // Extract just the ZIP portion
+                    const zipData = arrayBuffer.slice(zipStart);
+                    zip = await JSZip.loadAsync(zipData);
+                }
+                
+                gameFiles = {};
+                
+                updateProgress(40, 'Extracting files...');
+                
+                const fileNames = Object.keys(zip.files);
+                let processed = 0;
+                
+                for (let fileName of fileNames) {
+                    const zipFile = zip.files[fileName];
+                    if (!zipFile.dir) {
+                        const content = await zipFile.async('arraybuffer');
+                        gameFiles[fileName] = content;
+                        processed++;
+                        updateProgress(40 + (processed / fileNames.length) * 30, `Extracting ${processed}/${fileNames.length}...`);
+                    }
+                }
+                
+                updateProgress(70, 'Looking for game files...');
+                
+                // Find main.lua (could be in root or subdirectory)
+                let mainLuaPath = null;
+                for (let path in gameFiles) {
+                    if (path.endsWith('main.lua') || path === 'main.lua') {
+                        mainLuaPath = path;
+                        break;
+                    }
+                }
+                
+                // If main.lua found in subdirectory, normalize all paths
+                if (mainLuaPath && mainLuaPath !== 'main.lua') {
+                    const pathPrefix = mainLuaPath.substring(0, mainLuaPath.lastIndexOf('/') + 1);
+                    const normalizedFiles = {};
+                    
+                    for (let path in gameFiles) {
+                        let newPath = path;
+                        if (path.startsWith(pathPrefix)) {
+                            newPath = path.substring(pathPrefix.length);
+                        }
+                        normalizedFiles[newPath] = gameFiles[path];
+                    }
+                    
+                    gameFiles = normalizedFiles;
+                }
+                
+                // If still no main.lua, check if this is a valid LÖVE game with conf.lua
+                if (!gameFiles['main.lua']) {
+                    // List what we found for debugging
+                    const luaFiles = Object.keys(gameFiles).filter(f => f.endsWith('.lua'));
+                    console.log('Lua files found:', luaFiles);
+                    console.log('All files:', Object.keys(gameFiles));
+                    
+                    // Check if there's at least conf.lua or some .lua files
+                    if (luaFiles.length > 0) {
+                        showStatus('⚠️ No main.lua found, but found other Lua files. This may not be a standard LÖVE game. Files: ' + luaFiles.join(', '), 'error');
+                    } else {
+                        showStatus('❌ Error: No Lua files found in .love file. This may not be a valid LÖVE game.', 'error');
+                    }
+                    hideProgress();
+                    return;
+                }
+                
+                updateProgress(90, 'Starting game...');
+                await startGame();
+                
+            } catch (error) {
+                showStatus('❌ Error extracting .love file: ' + error.message, 'error');
+                console.error('Full error:', error);
+                hideProgress();
+            }
+        }
+
+        async function processFiles(files) {
+            showStatus('📂 Processing game files...', 'loading');
+            updateProgress(10, 'Reading files...');
+            
+            gameFiles = {};
+            let basePath = '';
+            
+            for (let file of files) {
+                const path = file.webkitRelativePath || file.name;
+                if (!basePath && path.includes('/')) {
+                    basePath = path.split('/')[0] + '/';
+                }
+                gameFiles[path] = await file.arrayBuffer();
+            }
+
+            updateProgress(50, 'Validating game...');
+            
+            // Find main.lua
+            let mainLuaPath = null;
+            for (let path in gameFiles) {
+                if (path.endsWith('main.lua')) {
+                    mainLuaPath = path;
+                    break;
+                }
+            }
+
+            if (!mainLuaPath) {
+                showStatus('❌ Error: No main.lua found in selected folder', 'error');
+                hideProgress();
+                return;
+            }
+
+            updateProgress(75, 'Preparing game...');
+            
+            // Normalize paths
+            const normalizedFiles = {};
+            const pathPrefix = mainLuaPath.substring(0, mainLuaPath.lastIndexOf('/') + 1);
+            
+            for (let path in gameFiles) {
+                let newPath = path;
+                if (path.startsWith(pathPrefix)) {
+                    newPath = path.substring(pathPrefix.length);
+                }
+                normalizedFiles[newPath] = gameFiles[path];
+            }
+
+            gameFiles = normalizedFiles;
+            
+            updateProgress(90, 'Starting game...');
+            await startGame();
+        }
+
+        async function processDirectory(dirEntry) {
+            showStatus('📂 Reading directory...', 'loading');
+            gameFiles = {};
+            await readDirectory(dirEntry, '');
+            
+            if (Object.keys(gameFiles).length > 0) {
+                await processFiles(Object.values(gameFiles).map((data, i) => {
+                    const path = Object.keys(gameFiles)[i];
+                    return new File([data], path);
+                }));
+            }
+        }
+
+        async function readDirectory(entry, path) {
+            if (entry.isFile) {
+                return new Promise((resolve) => {
+                    entry.file(async (file) => {
+                        const arrayBuffer = await file.arrayBuffer();
+                        gameFiles[path + file.name] = arrayBuffer;
+                        resolve();
+                    });
+                });
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                return new Promise((resolve) => {
+                    reader.readEntries(async (entries) => {
+                        for (let e of entries) {
+                            await readDirectory(e, path + entry.name + '/');
+                        }
+                        resolve();
+                    });
+                });
+            }
+        }
+
+        async function startGame() {
+            dropZone.classList.add('hidden');
+            gameContainer.classList.add('active');
+            controls.classList.add('active');
+            
+            showStatus('🎮 Initializing LÖVE engine...', 'loading');
+            
+            // Setup virtual filesystem
+            Module = {
+                arguments: ['./game'],
+                printErr: console.error,
+                canvas: canvas,
+                setStatus: function(text) {
+                    if (text) {
+                        showStatus('🎮 ' + text, 'loading');
+                    }
+                },
+                totalDependencies: 0,
+                monitorRunDependencies: function(left) {
+                    this.totalDependencies = Math.max(this.totalDependencies, left);
+                    if (left === 0) {
+                        hideProgress();
+                        showStatus('✅ Game running! Use keyboard/mouse to play', 'success');
+                    } else {
+                        const percent = Math.round(((this.totalDependencies - left) / this.totalDependencies) * 100);
+                        updateProgress(percent, 'Loading engine...');
+                    }
+                },
+                preRun: [function() {
+                    // Create virtual filesystem
+                    const gameDir = '/game';
+                    try {
+                        FS.mkdir(gameDir);
+                    } catch(e) {}
+                    
+                    // Write all game files
+                    for (let path in gameFiles) {
+                        const fullPath = gameDir + '/' + path;
+                        const dirPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                        
+                        // Create directories
+                        const parts = dirPath.split('/').filter(p => p);
+                        let currentPath = '';
+                        for (let part of parts) {
+                            currentPath += '/' + part;
+                            try {
+                                FS.mkdir(currentPath);
+                            } catch(e) {}
+                        }
+                        
+                        // Write file
+                        FS.writeFile(fullPath, new Uint8Array(gameFiles[path]));
+                    }
+                }]
+            };
+
+            // Load LÖVE.js
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/gh/Davidobot/love.js@latest/release/love.js';
+            script.onerror = function() {
+                showStatus('❌ Failed to load LÖVE.js engine. Please check your internet connection.', 'error');
+                hideProgress();
+            };
+            document.body.appendChild(script);
+        }
+
+        function restartGame() {
+            window.location.reload();
+        }
+
+        function stopGame() {
+            if (Module && Module.setStatus) {
+                Module.setStatus('Stopped');
+            }
+            gameContainer.classList.remove('active');
+            controls.classList.remove('active');
+            dropZone.classList.remove('hidden');
+            showStatus('Game stopped. Select another game to play.', 'info');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                gameContainer.requestFullscreen().catch(err => {
+                    showStatus('❌ Fullscreen failed: ' + err.message, 'error');
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Focus canvas on click
+        canvas.addEventListener('click', () => canvas.focus());
+    </script>
+</body>
+</html>
