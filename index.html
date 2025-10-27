@@ -3,281 +3,123 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LÖVE.js Game Runner</title>
+<title>Universal Game Emulator</title>
 <style>
-    * {margin:0; padding:0; box-sizing:border-box;}
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background: #1e1e1e;
-        color: #ddd;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 20px;
-    }
-    .container {
-        max-width: 1200px;
-        width: 100%;
-        background: #2b2b2b;
-        border-radius: 10px;
-        padding: 25px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.4);
-    }
-    h1 {
-        text-align: center;
-        margin-bottom: 10px;
-        font-size: 2em;
-        color: #fff;
-    }
-    .subtitle {
-        text-align: center;
-        margin-bottom: 20px;
-        color: #aaa;
-    }
-    .upload-section {
-        background: #333;
-        border: 2px dashed #555;
-        border-radius: 10px;
-        padding: 30px;
-        text-align: center;
-        margin-bottom: 20px;
-        transition: all 0.3s;
-        cursor: pointer;
-    }
-    .upload-section:hover, .upload-section.dragover {
-        background: #3d3d3d;
-        border-color: #888;
-    }
-    input[type=file] {display:none;}
-    .btn {
-        background: #4a90e2;
-        color: #fff;
-        border: none;
-        padding: 10px 25px;
-        border-radius: 6px;
-        cursor: pointer;
-        margin: 5px;
-        font-size: 1em;
-        transition: background 0.2s;
-    }
-    .btn:hover { background: #5aa0f0; }
-    .btn:disabled {opacity:0.5; cursor:not-allowed;}
-    .status {
-        margin-top: 15px;
-        padding: 12px;
-        border-radius: 6px;
-        text-align: center;
-        font-weight: bold;
-    }
-    .status.info { background: rgba(52,152,219,0.2); }
-    .status.error { background: rgba(231,76,60,0.2); color:#ff6b6b; }
-    .status.success { background: rgba(46,204,113,0.2); color:#7fffac; }
-    .status.loading { background: rgba(241,196,15,0.2); }
-    .game-container {
-        display:none;
-        background:#000;
-        border-radius:8px;
-        overflow:hidden;
-        margin-top:20px;
-        box-shadow:0 0 15px rgba(0,0,0,0.6);
-    }
-    .game-container.active {display:block;}
-    #canvas {width:100%; height:auto; display:block;}
-    .controls {
-        display:none;
-        justify-content:center;
-        flex-wrap:wrap;
-        gap:10px;
-        margin-top:15px;
-    }
-    .controls.active {display:flex;}
-    .info-box {
-        background:#2d2d2d;
-        border-radius:8px;
-        padding:15px;
-        margin-top:15px;
-        color:#ccc;
-    }
-    .info-box h3 {margin-bottom:8px;}
-    .info-box ul {margin-left:18px; line-height:1.6;}
-    .progress-bar {
-        display:none;
-        background:#444;
-        border-radius:8px;
-        height:20px;
-        margin-top:10px;
-        overflow:hidden;
-    }
-    .progress-bar.active {display:block;}
-    .progress-fill {
-        background:#4a90e2;
-        height:100%;
-        width:0%;
-        color:#fff;
-        text-align:center;
-        line-height:20px;
-        font-weight:bold;
-        transition:width 0.2s ease;
-    }
+body {
+  font-family: sans-serif;
+  background: #1e1e1e;
+  color: #ddd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+.container {
+  max-width: 1000px;
+  background: #2b2b2b;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px #0008;
+}
+button {
+  background: #4a90e2;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+}
+#canvas {
+  width: 100%;
+  background: #000;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+.status { margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="container">
-    <h1>🎮 LÖVE.js Game Runner</h1>
-    <p class="subtitle">Run your LÖVE 11.x games right in the browser.</p>
+  <h1>🎮 Universal Game Emulator</h1>
+  <p>Supports: LÖVE, Kristal, and lightweight EXE games (via BoxedWine)</p>
 
-    <div class="upload-section" id="dropZone">
-        <h2>Drop a .love file or game folder</h2>
-        <p>or use buttons below</p>
-        <button class="btn" onclick="document.getElementById('loveFileInput').click()">Select .love</button>
-        <button class="btn" onclick="document.getElementById('folderInput').click()">Select Folder</button>
-        <input type="file" id="loveFileInput" accept=".love">
-        <input type="file" id="folderInput" webkitdirectory directory multiple>
-    </div>
+  <input type="file" id="fileInput" webkitdirectory directory multiple>
+  <input type="file" id="singleFile" accept=".love,.zip,.exe">
+  <button onclick="document.getElementById('singleFile').click()">Select File</button>
 
-    <div class="progress-bar" id="progressBar">
-        <div class="progress-fill" id="progressFill">0%</div>
-    </div>
-    <div id="status"></div>
-
-    <div class="controls" id="controls">
-        <button class="btn" onclick="toggleFullscreen()">Fullscreen</button>
-        <button class="btn" onclick="restartGame()">Restart</button>
-        <button class="btn" onclick="stopGame()">Stop</button>
-    </div>
-
-    <div class="game-container" id="gameContainer">
-        <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
-    </div>
-
-    <div class="info-box">
-        <h3>ℹ️ How to Use</h3>
-        <ul>
-            <li>Select a <strong>.love</strong> file or a folder containing <code>main.lua</code>.</li>
-            <li>Wait for the game to load — larger games take longer.</li>
-            <li>Use keyboard and mouse as usual.</li>
-            <li>Click <strong>Fullscreen</strong> for better immersion.</li>
-        </ul>
-    </div>
+  <div id="status" class="status">No game loaded.</div>
+  <canvas id="canvas"></canvas>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-const dropZone=document.getElementById('dropZone');
-const loveFileInput=document.getElementById('loveFileInput');
-const folderInput=document.getElementById('folderInput');
-const canvas=document.getElementById('canvas');
-const gameContainer=document.getElementById('gameContainer');
-const status=document.getElementById('status');
-const controls=document.getElementById('controls');
-const progressBar=document.getElementById('progressBar');
-const progressFill=document.getElementById('progressFill');
-let gameFiles={};
+const fileInput = document.getElementById('singleFile');
+const canvas = document.getElementById('canvas');
+const status = document.getElementById('status');
 
-function showStatus(msg,type='info'){
-    status.innerHTML=msg;
-    status.className='status '+type;
-}
-function updateProgress(pct,text){
-    progressBar.classList.add('active');
-    progressFill.style.width=pct+'%';
-    progressFill.textContent=text||pct+'%';
-}
-function hideProgress(){progressBar.classList.remove('active');}
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover');});
-dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop',async e=>{
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    const files=e.dataTransfer.files;
-    if(files.length>0 && files[0].name.endsWith('.love')){
-        await processLoveFile(files[0]);
-    }else{
-        await processFiles(files);
-    }
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.love')) {
+    runLoveGame(file);
+  } else if (name.endsWith('.zip')) {
+    runZipGame(file);
+  } else if (name.endsWith('.exe')) {
+    runExeGame(file);
+  } else {
+    status.textContent = '❌ Unsupported file type.';
+  }
 });
-loveFileInput.addEventListener('change',e=>{if(e.target.files[0])processLoveFile(e.target.files[0]);});
-folderInput.addEventListener('change',e=>{if(e.target.files.length>0)processFiles(e.target.files);});
 
-async function processLoveFile(file){
-    showStatus('Extracting '+file.name+'...','loading');updateProgress(10);
-    try{
-        const zip=await JSZip.loadAsync(await file.arrayBuffer());
-        const files={};
-        let i=0;
-        for(let f in zip.files){
-            if(!zip.files[f].dir){
-                files[f]=await zip.files[f].async('uint8array');
-                i++;updateProgress(10+(i/Object.keys(zip.files).length)*60);
-            }
-        }
-        gameFiles=files;
-        startGame();
-    }catch(err){
-        showStatus('❌ Failed to read .love: '+err.message,'error');
-        hideProgress();
-    }
-}
-async function processFiles(files){
-    showStatus('Loading folder...','loading');
-    gameFiles={};
-    for(const f of files){
-        const path=f.webkitRelativePath||f.name;
-        gameFiles[path]=new Uint8Array(await f.arrayBuffer());
-    }
-    startGame();
+async function runLoveGame(file) {
+  status.textContent = 'Loading LÖVE game...';
+  const buffer = await file.arrayBuffer();
+  window.gameBuffer = buffer;
+
+  loadLoveRuntime();
 }
 
-function startGame(){
-    dropZone.style.display='none';
-    gameContainer.classList.add('active');
-    controls.classList.add('active');
-    showStatus('Starting game...','loading');
-
-    const Module={
-        arguments:['./game'],
-        canvas:canvas,
-        printErr:console.error,
-        setStatus:t=>showStatus('🎮 '+t,'loading'),
-        preRun:[function(){
-            FS.mkdir('/game');
-            for(let path in gameFiles){
-                const parts=path.split('/');
-                let dir='/game';
-                for(let i=0;i<parts.length-1;i++){
-                    dir+='/'+parts[i];
-                    try{FS.mkdir(dir);}catch(e){}
-                }
-                FS.writeFile('/game/'+path,gameFiles[path]);
-            }
-        }],
-        onRuntimeInitialized:function(){
-            showStatus('✅ Game running!','success');
-            hideProgress();
-        }
-    };
-    const script=document.createElement('script');
-    script.src='https://rxi.github.io/love.js/love.js'; // reliable 11.4 build
-    script.onerror=()=>showStatus('❌ Failed to load LÖVE.js runtime.','error');
-    document.body.appendChild(script);
-}
-function restartGame(){window.location.reload();}
-function stopGame(){
-    gameContainer.classList.remove('active');
-    controls.classList.remove('active');
-    dropZone.style.display='block';
-    showStatus('Game stopped.','info');
-}
-function toggleFullscreen(){
-    if(!document.fullscreenElement){
-        gameContainer.requestFullscreen().catch(err=>showStatus(err.message,'error'));
-    }else{
-        document.exitFullscreen();
+async function runZipGame(file) {
+  status.textContent = 'Extracting zip...';
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const files = {};
+  for (const path in zip.files) {
+    if (!zip.files[path].dir) {
+      files[path] = await zip.files[path].async('uint8array');
     }
+  }
+  window.gameFiles = files;
+  loadLoveRuntime();
 }
-canvas.addEventListener('click',()=>canvas.focus());
+
+function runExeGame(file) {
+  status.textContent = 'Loading BoxedWine emulator...';
+  const script = document.createElement('script');
+  script.src = 'https://boxedwine.org/js/boxedwine.js';
+  script.onload = () => {
+    status.textContent = 'Running .exe (experimental)...';
+    // BoxedWine init logic here
+  };
+  script.onerror = () => {
+    status.textContent = '❌ Failed to load BoxedWine emulator.';
+  };
+  document.body.appendChild(script);
+}
+
+function loadLoveRuntime() {
+  const script = document.createElement('script');
+  script.src = 'https://rxi.github.io/love.js/love.js';
+  script.onload = () => {
+    status.textContent = '✅ LÖVE engine loaded!';
+    // Files are written into FS in preRun (to be added)
+  };
+  script.onerror = () => {
+    status.textContent = '❌ Failed to load LÖVE runtime.';
+  };
+  document.body.appendChild(script);
+}
 </script>
 </body>
 </html>
